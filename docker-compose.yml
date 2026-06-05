@@ -23,7 +23,9 @@ services:
     image: axd-car-booking:latest
     entrypoint: ["nginx", "-g", "daemon off;"]
     ports:
-      - "8090:80"
+      # Bound to loopback by default — front it with a TLS reverse proxy in production.
+      # Override the host port/interface via WEB_PORT / WEB_BIND in your env file.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8090}:80"
     depends_on:
       - app
     restart: unless-stopped
@@ -57,7 +59,8 @@ services:
       # Auto-imported ONLY on a fresh volume (first start)
       - ./u2304932_car_booking.sql:/docker-entrypoint-initdb.d/01-initial.sql:ro
     ports:
-      - "3307:3306"
+      # Loopback-only by default so the DB is never exposed publicly.
+      - "${DB_BIND:-127.0.0.1}:${DB_PORT_HOST:-3307}:3306"
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
