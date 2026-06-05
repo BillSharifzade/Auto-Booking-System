@@ -1,11 +1,14 @@
 name: axd-car-booking
 
+# Shared build definition so app, web and queue all build (not pull) the same image.
+x-app-build: &app-build
+  context: .
+  dockerfile: docker/Dockerfile
+
 services:
   # ---- PHP application (php-fpm) ----
   app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    build: *app-build
     image: axd-car-booking:latest
     # Uses your existing repo-root .env. DB_HOST is forced to the bundled `db`
     # service — your .env's 127.0.0.1 would point the container at itself.
@@ -25,6 +28,7 @@ services:
 
   # ---- Web server (nginx) — same image, serves public/ and proxies to app ----
   web:
+    build: *app-build
     image: axd-car-booking:latest
     entrypoint: ["nginx", "-g", "daemon off;"]
     ports:
@@ -37,6 +41,7 @@ services:
 
   # ---- Queue worker (database queue) ----
   queue:
+    build: *app-build
     image: axd-car-booking:latest
     entrypoint: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     env_file:
