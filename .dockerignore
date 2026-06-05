@@ -1,0 +1,29 @@
+# Dependencies & build artifacts (reinstalled/rebuilt inside the image)
+/vendor
+/node_modules
+/public/build
+/public/hot
+
+# Local env & secrets (containers use docker/env.docker + compose environment)
+.env
+.env.backup
+.env.*.local
+
+# VCS & editor
+.git
+.gitignore
+.idea
+.vscode
+
+# Laravel runtime
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+# Misc
+/tests
+*.md
+u2304932_car_booking.sql
+docker-compose*.yml

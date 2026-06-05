@@ -1,0 +1,86 @@
+name: axd-car-booking
+
+services:
+  # ---- PHP application (php-fpm) ----
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: axd-car-booking:latest
+    env_file:
+      - docker/env.docker
+    volumes:
+      # Persist logs & uploaded files across rebuilds
+      - storage-logs:/var/www/html/storage/logs
+      - storage-app:/var/www/html/storage/app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- Web server (nginx) — same image, serves public/ and proxies to app ----
+  web:
+    image: axd-car-booking:latest
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "8090:80"
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  # ---- Queue worker (database queue) ----
+  queue:
+    image: axd-car-booking:latest
+    entrypoint: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    env_file:
+      - docker/env.docker
+    volumes:
+      - storage-logs:/var/www/html/storage/logs
+      - storage-app:/var/www/html/storage/app
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  # ---- Database (MariaDB) ----
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: u2304932_car_booking
+      MARIADB_USER: u2304932_car_booking
+      MARIADB_PASSWORD: nX7tT5rN0gdD2oQ6
+    volumes:
+      - dbdata:/var/lib/mysql
+      # Auto-imported ONLY on a fresh volume (first start)
+      - ./u2304932_car_booking.sql:/docker-entrypoint-initdb.d/01-initial.sql:ro
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ---- Public tunnel for the Telegram bot / Mini App (optional) ----
+  # Start with:  NGROK_AUTHTOKEN=xxx docker compose --profile tunnel up -d
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: ["http", "web:80"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    ports:
+      - "4040:4040"   # ngrok inspector / local API
+    depends_on:
+      - web
+    profiles:
+      - tunnel
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+  storage-logs:
+  storage-app:
