@@ -7,8 +7,13 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     image: axd-car-booking:latest
+    # Uses your existing repo-root .env. DB_HOST is forced to the bundled `db`
+    # service — your .env's 127.0.0.1 would point the container at itself.
     env_file:
-      - docker/env.docker
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
     volumes:
       # Persist logs & uploaded files across rebuilds
       - storage-logs:/var/www/html/storage/logs
@@ -35,7 +40,10 @@ services:
     image: axd-car-booking:latest
     entrypoint: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     env_file:
-      - docker/env.docker
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
     volumes:
       - storage-logs:/var/www/html/storage/logs
       - storage-app:/var/www/html/storage/app
@@ -50,10 +58,11 @@ services:
   db:
     image: mariadb:11
     environment:
-      MARIADB_ROOT_PASSWORD: root
-      MARIADB_DATABASE: u2304932_car_booking
-      MARIADB_USER: u2304932_car_booking
-      MARIADB_PASSWORD: nX7tT5rN0gdD2oQ6
+      # Read from the repo-root .env so the DB creds always match the app.
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MARIADB_DATABASE: ${DB_DATABASE:-u2304932_car_booking}
+      MARIADB_USER: ${DB_USERNAME:-u2304932_car_booking}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-nX7tT5rN0gdD2oQ6}
     volumes:
       - dbdata:/var/lib/mysql
       # Auto-imported ONLY on a fresh volume (first start)

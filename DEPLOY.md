@@ -1,77 +1,57 @@
-# Production Deployment
+# Production Deployment (Docker + your existing `.env`)
 
 Self-contained Docker stack: Laravel (php-fpm 8.4) + nginx + MariaDB + queue worker.
-The database is **auto-imported** from `u2304932_car_booking.sql` on the first start.
+The containers read your **repo-root `.env`** directly. The database is **auto-imported**
+from `u2304932_car_booking.sql` on the first start.
 
 ---
 
 ## 1. Server prerequisites (once)
 
 ```bash
-# Docker Engine + Compose plugin (Debian/Ubuntu)
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER          # log out/in afterwards
 ```
 
-## 2. Get the code + the SQL dump
+## 2. Code, `.env`, and the SQL dump
+
+Both `.env` and `u2304932_car_booking.sql` are **gitignored**, so they aren't in the clone —
+put them in the project directory on the server:
 
 ```bash
 git clone https://github.com/BillSharifzade/Auto-Booking-System.git
 cd Auto-Booking-System
+# .env and the SQL dump (copy from your machine if not already there):
+scp .env                      user@server:$(pwd)/
+scp u2304932_car_booking.sql  user@server:$(pwd)/
 ```
 
-`u2304932_car_booking.sql` is **gitignored**, so copy it onto the server manually:
+Make sure `.env` has the production values you want — at least:
+`APP_URL` / `WEBAPP_URL` = your domain, and the `DB_*` credentials.
+(Compose forces `DB_HOST=db` for you, so leave that as-is in `.env`.)
+
+## 3. Build & start
 
 ```bash
-# from your machine
-scp u2304932_car_booking.sql user@your-server:/path/to/Auto-Booking-System/
+docker compose up -d --build
 ```
 
-## 3. Configure secrets
-
-```bash
-cp .env.production.example .env.production
-```
-
-Edit `.env.production` and set:
-
-| Variable | What to put |
-|----------|-------------|
-| `APP_URL`, `WEBAPP_URL` | your real `https://your-domain.com` |
-| `DB_PASSWORD`, `DB_ROOT_PASSWORD` | strong, unique passwords (set **before** first start) |
-| `TELEGRAM_BOT_TOKEN` | your bot token (or leave blank) |
-| `APP_KEY` | generate it (next step) |
-
-Generate the app key and paste it into `.env.production`:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production \
-  run --rm app php artisan key:generate --show
-```
-
-## 4. Build & start
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production \
-  up -d --build
-```
-
-First boot imports the SQL dump, runs migrations, and starts all services.
-The web server is bound to **127.0.0.1:8090** (loopback only — fronted by your proxy).
+First boot imports the SQL dump and runs migrations. The web server is bound to
+**127.0.0.1:8090** (loopback only — front it with your TLS reverse proxy).
 
 Check it:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose ps
 curl -I http://127.0.0.1:8090
 ```
 
-## 5. TLS reverse proxy (host nginx)
+## 4. TLS reverse proxy (host nginx)
 
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name web.our-brands.ru;
     client_max_body_size 25M;
 
     location / {
@@ -85,55 +65,53 @@ server {
 ```
 
 ```bash
-sudo certbot --nginx -d your-domain.com     # issues + installs the certificate
+sudo certbot --nginx -d web.our-brands.ru
 ```
 
-The app already trusts proxy headers (`bootstrap/app.php`), so it generates correct
-`https://` URLs once `X-Forwarded-Proto` arrives.
+The app trusts proxy headers (`bootstrap/app.php`), so it generates correct `https://`
+URLs once `X-Forwarded-Proto` arrives.
 
-## 6. Telegram webhook (if used)
+## 5. Telegram webhook (if used)
 
 ```bash
-curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
-  --data-urlencode "url=https://your-domain.com/telegram/webhook"
+TOKEN=$(grep ^TELEGRAM_BOT_TOKEN= .env | cut -d= -f2)
+curl "https://api.telegram.org/bot$TOKEN/setWebhook" \
+  --data-urlencode "url=https://web.our-brands.ru/telegram/webhook"
 ```
 
 ---
 
 ## Access
 
-- Client app:  `https://your-domain.com/`
-- Admin panel: `https://your-domain.com/admin`
-- API:         `https://your-domain.com/api/...`
+- Client app:  `https://web.our-brands.ru/`
+- Admin panel: `https://web.our-brands.ru/admin`
+- API:         `https://web.our-brands.ru/api/...`
 
 ## Day-to-day
 
-> Tip: alias the long command —
-> `alias dcp='docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production'`
-
 ```bash
-dcp up -d --build      # deploy after a git pull
-dcp ps                 # status
-dcp logs -f app        # tail logs
-dcp restart app queue  # apply env changes
-dcp down               # stop (keeps DB data)
-dcp down -v            # stop + WIPE the DB volume (re-imports the .sql next start)
+docker compose up -d --build   # deploy after a git pull
+docker compose ps              # status
+docker compose logs -f app     # tail logs
+docker compose restart app queue   # apply .env changes
+docker compose down            # stop (keeps DB data)
+docker compose down -v         # stop + WIPE the DB volume (re-imports the .sql)
 ```
 
-## Updating the app
+## How the `.env` is wired
 
-```bash
-git pull
-dcp up -d --build      # rebuilds image, runs migrations on boot
-```
+- `app` and `queue` load your repo-root **`.env`** (`env_file: .env`), with **`DB_HOST=db`**
+  forced in compose (your `.env`'s `127.0.0.1` would point the container at itself).
+- The `db` service reads `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` from the same `.env`
+  via `${...}`, so app and database credentials always match.
 
 ## ⚠️ Data safety
 
-- The `.sql` dump is imported **only on a fresh DB volume**. Once live, **never** run
-  `down -v` unless you intend to wipe and re-seed.
-- `DB_PASSWORD` / `DB_ROOT_PASSWORD` take effect only on the **first** start (when the
-  volume is created). Changing them later needs a manual `ALTER USER` inside the DB.
-- Back up the database regularly:
+- The `.sql` dump imports **only on a fresh DB volume**. Once live, don't run `down -v`
+  unless you intend to wipe and re-seed.
+- `DB_PASSWORD` takes effect only on the **first** start (when the volume is created).
+  Changing it in `.env` later needs a manual `ALTER USER` inside the DB.
+- Back up regularly:
   ```bash
-  dcp exec db mariadb-dump -u root -p"$DB_ROOT_PASSWORD" u2304932_car_booking > backup-$(date +%F).sql
+  docker compose exec db mariadb-dump -uroot -p"$DB_ROOT_PASSWORD" u2304932_car_booking > backup-$(date +%F).sql
   ```
