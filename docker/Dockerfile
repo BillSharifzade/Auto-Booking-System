@@ -27,7 +27,7 @@ FROM php:8.4-fpm-alpine AS app
 # System packages: nginx (served by the `web` service) + libs
 RUN apk add --no-cache nginx bash
 
-# PHP extensions required by Laravel 12 + Filament + this project
+# PHP extensions required by Laravel 12 + this project
 COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions \
     pdo_mysql \
@@ -58,10 +58,9 @@ COPY --from=assets /app/public/build ./public/build
 # Container env file (DB points at the `db` service). Compose overrides secrets at runtime.
 COPY docker/env.docker .env
 
-# Finish composer autoload + discover packages + publish Filament/Vite assets (no DB needed)
+# Finish composer autoload + discover packages (no DB needed)
 RUN composer dump-autoload --optimize --no-dev \
  && php artisan package:discover --ansi || true \
- && php artisan filament:assets || true \
  && php artisan storage:link || true
 
 # Permissions for runtime-writable dirs

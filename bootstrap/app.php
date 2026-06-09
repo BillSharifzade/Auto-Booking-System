@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // The app sits behind a TLS-terminating reverse proxy (nginx/Caddy/Cloudflare)
-        // in production. Trust the forwarded headers so Laravel/Filament generate
+        // in production. Trust the forwarded headers so Laravel generates
         // correct https:// URLs and detect the real client IP.
         $middleware->trustProxies(at: '*');
     })

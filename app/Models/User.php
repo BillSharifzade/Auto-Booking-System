@@ -8,17 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
-
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable
 {
     use HasFactory, Notifiable;
-
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->role === UserRole::ADMIN && $this->is_active;
-    }
 
     protected $fillable = [
         'telegram_id',
@@ -47,7 +39,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Get the user's name for Filament.
+     * Get the user's display name.
      */
     public function getNameAttribute(): ?string
     {
