@@ -51,7 +51,7 @@ curl -I http://127.0.0.1:8090
 ```nginx
 server {
     listen 80;
-    server_name web.our-brands.ru;
+    server_name akhd.koinotinav.com;
     client_max_body_size 25M;
 
     location / {
@@ -65,7 +65,7 @@ server {
 ```
 
 ```bash
-sudo certbot --nginx -d web.our-brands.ru
+sudo certbot --nginx -d akhd.koinotinav.com
 ```
 
 The app trusts proxy headers (`bootstrap/app.php`), so it generates correct `https://`
@@ -76,16 +76,16 @@ URLs once `X-Forwarded-Proto` arrives.
 ```bash
 TOKEN=$(grep ^TELEGRAM_BOT_TOKEN= .env | cut -d= -f2)
 curl "https://api.telegram.org/bot$TOKEN/setWebhook" \
-  --data-urlencode "url=https://web.our-brands.ru/telegram/webhook"
+  --data-urlencode "url=https://akhd.koinotinav.com/telegram/webhook"
 ```
 
 ---
 
 ## Access
 
-- Client app:  `https://web.our-brands.ru/`
-- Admin panel: `https://web.our-brands.ru/admin`
-- API:         `https://web.our-brands.ru/api/...`
+- Client app:  `https://akhd.koinotinav.com/`
+- Admin panel: `https://akhd.koinotinav.com/admin`
+- API:         `https://akhd.koinotinav.com/api/...`
 
 ## Day-to-day
 
