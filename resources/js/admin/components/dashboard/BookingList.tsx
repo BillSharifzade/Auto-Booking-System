@@ -31,9 +31,9 @@ const REJECTION_REASONS = [
 
 export function BookingList({ selectedDate }: BookingListProps) {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
-  const [actionBookingId, setActionBookingId] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<'cancel' | 'delete' | null>(null);
-  const [rejectBookingId, setRejectBookingId] = useState<string | null>(null);
+  const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
+  const [reasonBookingId, setReasonBookingId] = useState<string | null>(null);
+  const [reasonType, setReasonType] = useState<'decline' | 'cancel'>('decline');
   const [rejectReason, setRejectReason] = useState('');
 
   const {
@@ -52,41 +52,45 @@ export function BookingList({ selectedDate }: BookingListProps) {
     });
   };
 
-  const handleReject = (id: string) => {
-    setRejectBookingId(id);
+  const openReasonDialog = (id: string, type: 'decline' | 'cancel') => {
+    setReasonBookingId(id);
+    setReasonType(type);
     setRejectReason('');
   };
 
-  const confirmReject = () => {
-    if (!rejectBookingId) return;
+  const confirmReason = () => {
+    if (!reasonBookingId) return;
     const reason = rejectReason.trim();
+    if (!reason) {
+      toast.error("Укажите причину");
+      return;
+    }
 
-    decline.mutate({ id: rejectBookingId, reason: reason || undefined }, {
-      onSuccess: () => toast.info("Заявка отклонена, клиент уведомлён"),
-      onError: () => toast.error("Ошибка при отклонении заявки")
-    });
-
-    setRejectBookingId(null);
-    setRejectReason('');
-  };
-
-  const confirmAction = () => {
-    if (!actionBookingId || !actionType) return;
-
-    if (actionType === 'cancel') {
-      cancel.mutate(actionBookingId, {
-        onSuccess: () => toast.info("Заявка отменена"),
-        onError: () => toast.error("Ошибка при отмене заявки")
+    if (reasonType === 'decline') {
+      decline.mutate({ id: reasonBookingId, reason }, {
+        onSuccess: () => toast.info("Заявка отклонена, клиент уведомлён"),
+        onError: () => toast.error("Ошибка при отклонении заявки")
       });
-    } else if (actionType === 'delete') {
-      deleteBooking.mutate(actionBookingId, {
-        onSuccess: () => toast.success("Заявка удалена"),
-        onError: () => toast.error("Ошибка при удалении заявки")
+    } else {
+      cancel.mutate({ id: reasonBookingId, reason }, {
+        onSuccess: () => toast.info("Поездка отменена, клиент уведомлён"),
+        onError: () => toast.error("Ошибка при отмене заявки")
       });
     }
 
-    setActionBookingId(null);
-    setActionType(null);
+    setReasonBookingId(null);
+    setRejectReason('');
+  };
+
+  const confirmDelete = () => {
+    if (!deleteBookingId) return;
+
+    deleteBooking.mutate(deleteBookingId, {
+      onSuccess: () => toast.success("Заявка удалена"),
+      onError: () => toast.error("Ошибка при удалении заявки")
+    });
+
+    setDeleteBookingId(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -154,7 +158,7 @@ export function BookingList({ selectedDate }: BookingListProps) {
                         size="icon"
                         variant="outline"
                         className="h-8 w-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => handleReject(booking.id)}
+                        onClick={() => openReasonDialog(booking.id, 'decline')}
                         title="Отклонить"
                       >
                         <X className="h-4 w-4" />
@@ -167,10 +171,7 @@ export function BookingList({ selectedDate }: BookingListProps) {
                       size="icon"
                       variant="outline"
                       className="h-8 w-8 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white"
-                      onClick={() => {
-                        setActionBookingId(booking.id);
-                        setActionType('cancel');
-                      }}
+                      onClick={() => openReasonDialog(booking.id, 'cancel')}
                       title="Отменить"
                     >
                       <Ban className="h-4 w-4" />
@@ -181,10 +182,7 @@ export function BookingList({ selectedDate }: BookingListProps) {
                     size="icon"
                     variant="outline"
                     className="h-8 w-8 border-gray-300 text-gray-500 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                    onClick={() => {
-                      setActionBookingId(booking.id);
-                      setActionType('delete');
-                    }}
+                    onClick={() => setDeleteBookingId(booking.id)}
                     title="Удалить"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -240,12 +238,16 @@ export function BookingList({ selectedDate }: BookingListProps) {
         )}
       </div>
 
-      <AlertDialog open={!!rejectBookingId} onOpenChange={(open) => !open && setRejectBookingId(null)}>
+      <AlertDialog open={!!reasonBookingId} onOpenChange={(open) => !open && setReasonBookingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Отклонить заявку?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {reasonType === 'decline' ? 'Отклонить заявку?' : 'Отменить поездку?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Укажите причину отказа. Клиент получит уведомление с этим текстом.
+              {reasonType === 'decline'
+                ? 'Укажите причину отказа. Клиент получит уведомление с этим текстом.'
+                : 'Укажите причину отмены. Клиент получит уведомление с этим текстом.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -267,7 +269,7 @@ export function BookingList({ selectedDate }: BookingListProps) {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Причина отказа..."
+              placeholder={reasonType === 'decline' ? 'Причина отказа...' : 'Причина отмены...'}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
@@ -276,34 +278,37 @@ export function BookingList({ selectedDate }: BookingListProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmReject}
+              onClick={(e) => {
+                if (!rejectReason.trim()) {
+                  e.preventDefault();
+                  toast.error("Укажите причину");
+                  return;
+                }
+                confirmReason();
+              }}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Отклонить
+              {reasonType === 'decline' ? 'Отклонить' : 'Отменить поездку'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!actionBookingId} onOpenChange={(open) => !open && setActionBookingId(null)}>
+      <AlertDialog open={!!deleteBookingId} onOpenChange={(open) => !open && setDeleteBookingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {actionType === 'cancel' ? 'Отменить поездку?' : 'Удалить заявку?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Удалить заявку?</AlertDialogTitle>
             <AlertDialogDescription>
-              {actionType === 'cancel'
-                ? 'Вы уверены, что хотите отменить эту поездку? Водитель получит уведомление.'
-                : 'Это действие нельзя отменить. Заявка будет удалена из системы.'}
+              Это действие нельзя отменить. Заявка будет удалена из системы.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmAction}
-              className={actionType === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
             >
-              {actionType === 'cancel' ? 'Да, отменить' : 'Да, удалить'}
+              Да, удалить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

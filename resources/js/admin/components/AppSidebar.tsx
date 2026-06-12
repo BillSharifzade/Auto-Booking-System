@@ -1,8 +1,10 @@
-import { LayoutDashboard, Car, Users, FileText, Building2, Briefcase } from "lucide-react";
+import { LayoutDashboard, Car, Users, FileText, Building2, Briefcase, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/context/AuthContext";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -23,6 +25,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const { user, logout } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -55,6 +58,21 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={logout}
+              className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              tooltip="Выйти"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="truncate">{open ? `Выйти (${user.name})` : 'Выйти'}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

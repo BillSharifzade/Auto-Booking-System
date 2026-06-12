@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // in production. Trust the forwarded headers so Laravel generates
         // correct https:// URLs and detect the real client IP.
         $middleware->trustProxies(at: '*');
+
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -9,6 +9,7 @@ class HttpClient {
     this.instance = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -19,16 +20,11 @@ class HttpClient {
   }
 
   private initializeInterceptors() {
-    // Request interceptor
+    // Request interceptor.
+    // CSRF: axios automatically mirrors Laravel's XSRF-TOKEN cookie into the
+    // X-XSRF-TOKEN header, which stays fresh across login/logout.
     this.instance.interceptors.request.use(
-      (config) => {
-        // You can add auth token here if needed
-        // const token = localStorage.getItem('authToken');
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`;
-        // }
-        return config;
-      },
+      (config) => config,
       (error: AxiosError) => {
         return Promise.reject(error);
       }
@@ -42,6 +38,10 @@ class HttpClient {
       (error: AxiosError) => {
         // Handle errors globally
         if (error.response) {
+          // Session expired or not logged in — let the auth gate show the login screen
+          if (error.response.status === 401 && !error.config?.url?.includes('/admin/login') && !error.config?.url?.includes('/admin/me')) {
+            window.dispatchEvent(new CustomEvent('admin:unauthorized'));
+          }
           // The request was made and the server responded with a status code
           // that falls out of the range of 2xx
           console.error('Response error:', error.response.data);

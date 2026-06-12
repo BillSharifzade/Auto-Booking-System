@@ -39,6 +39,15 @@ class TelegramService {
         return this.webApp !== null;
     }
 
+    /**
+     * True only when actually launched inside Telegram (the telegram-web-app.js
+     * script defines window.Telegram.WebApp even in a plain browser, but
+     * initData is only populated by a real Telegram client).
+     */
+    isInTelegram(): boolean {
+        return !!(this.webApp && this.webApp.initData);
+    }
+
     getUser() {
         // 1. Try to get user from Telegram WebApp
         if (this.webApp && this.webApp.initDataUnsafe?.user) {

@@ -19,8 +19,8 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
-            $endLocal = $booking->end_time->timezone('Asia/Dushanbe')->format('H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
+            $endLocal = $this->escapeMarkdown($booking->end_time->timezone('Asia/Dushanbe')->format('H:i'));
             
             $carModel = $this->escapeMarkdown($booking->car->model);
             $clientName = $this->escapeMarkdown($booking->user->full_name);
@@ -55,8 +55,8 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
-            $endLocal = $booking->end_time->timezone('Asia/Dushanbe')->format('H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
+            $endLocal = $this->escapeMarkdown($booking->end_time->timezone('Asia/Dushanbe')->format('H:i'));
             
             $carModel = $this->escapeMarkdown($booking->car->model);
             $clientName = $this->escapeMarkdown($booking->user->full_name);
@@ -99,7 +99,7 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
             
             $carModel = $this->escapeMarkdown($booking->car->model);
             $reasonEscaped = $this->escapeMarkdown($reason);
@@ -124,24 +124,29 @@ class NotificationService
     /**
      * Notify driver about booking cancellation
      */
-    public function notifyDriverBookingCanceled(Booking $booking, string $canceledBy, Nutgram $bot): void
+    public function notifyDriverBookingCanceled(Booking $booking, string $canceledBy, Nutgram $bot, ?string $reason = null): void
     {
         if (!$booking->driver || !$booking->driver->telegram_id) {
             return;
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
-            
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
+
             $carModel = $this->escapeMarkdown($booking->car->model);
             $clientName = $this->escapeMarkdown($booking->user->full_name);
-            
+            $canceledByText = $canceledBy === 'administrator' ? 'Администратор отменил поездку' : 'Клиент отменил поездку';
+
             $message = "🚫 *Заявка \\#{$booking->id} отменена*\n\n";
-            $message .= "Клиент отменил поездку\\.\n\n";
+            $message .= "{$canceledByText}\\.\n\n";
             $message .= "📅 *Время:* {$startLocal}\n";
             $message .= "🚙 *Автомобиль:* {$carModel}\n";
-            $message .= "👤 *Клиент:* {$clientName}\n\n";
-            $message .= "ℹ️ Вы освобождены от этой поездки\\.";
+            $message .= "👤 *Клиент:* {$clientName}\n";
+            if ($reason !== null && trim($reason) !== '') {
+                $reasonEscaped = $this->escapeMarkdown($reason);
+                $message .= "📝 *Причина:* {$reasonEscaped}\n";
+            }
+            $message .= "\nℹ️ Вы освобождены от этой поездки\\.";
 
             $bot->sendMessage(
                 text: $message,
@@ -165,7 +170,7 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
             
             $carModel = $this->escapeMarkdown($booking->car->model);
             
@@ -197,7 +202,7 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
 
             $carModel = $this->escapeMarkdown($booking->car->model ?? '—');
             $reasonEscaped = $this->escapeMarkdown($reason);
@@ -221,6 +226,39 @@ class NotificationService
     }
 
     /**
+     * Notify the client (booking owner) that their booking was canceled by the admin, with reason.
+     */
+    public function notifyClientBookingCanceled(Booking $booking, string $reason, Nutgram $bot): void
+    {
+        if (!$booking->user || !$booking->user->telegram_id) {
+            return;
+        }
+
+        try {
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
+
+            $carModel = $this->escapeMarkdown($booking->car->model ?? '—');
+            $reasonEscaped = $this->escapeMarkdown($reason);
+
+            $message = "❌ *Ваша заявка \\#{$booking->id} отменена*\n\n";
+            $message .= "📅 *Время:* {$startLocal}\n";
+            $message .= "🚙 *Автомобиль:* {$carModel}\n\n";
+            $message .= "📝 *Причина отмены:* {$reasonEscaped}\n\n";
+            $message .= "💡 Вы можете создать новую заявку на другое время\\.";
+
+            $bot->sendMessage(
+                text: $message,
+                chat_id: $booking->user->telegram_id,
+                parse_mode: 'MarkdownV2'
+            );
+
+            Log::info("Notified client {$booking->user->id} about canceled booking {$booking->id}");
+        } catch (\Exception $e) {
+            Log::error("Failed to notify client about canceled booking: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Notify users about preempted booking
      */
     public function notifyBookingPreempted(Booking $booking, Nutgram $bot): void
@@ -230,7 +268,7 @@ class NotificationService
         }
 
         try {
-            $startLocal = $booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i');
+            $startLocal = $this->escapeMarkdown($booking->start_time->timezone('Asia/Dushanbe')->format('d.m.Y H:i'));
             
             $carModel = $this->escapeMarkdown($booking->car->model);
             

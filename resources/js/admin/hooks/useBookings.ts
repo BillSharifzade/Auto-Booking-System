@@ -52,7 +52,7 @@ export const useBookings = (
   });
 
   const decline = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) => bookingService.decline(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => bookingService.decline(id, reason),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['bookings', id] });
@@ -60,8 +60,8 @@ export const useBookings = (
   });
 
   const cancel = useMutation({
-    mutationFn: (id: string) => bookingService.cancel(id),
-    onSuccess: (_, id) => {
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => bookingService.cancel(id, reason),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['bookings', id] });
     },

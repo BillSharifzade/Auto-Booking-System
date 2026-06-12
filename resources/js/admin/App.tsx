@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AuthGate } from "@/context/AuthContext";
 import { ThemeProvider } from "next-themes";
 import Dashboard from "./pages/Dashboard";
 import Cars from "./pages/Cars";
@@ -22,6 +23,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <AuthGate>
         <BrowserRouter basename="/admin">
           <SidebarProvider>
             <div className="min-h-screen flex w-full bg-background">
@@ -45,6 +47,7 @@ const App = () => (
             </div>
           </SidebarProvider>
         </BrowserRouter>
+        </AuthGate>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

@@ -322,9 +322,6 @@ const BookingPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background pb-24">
-            <div className="bg-gray-100 p-1 text-xs text-center text-gray-500">
-                Debug: User ID {telegramService.getUser()?.id || 'MISSING'}
-            </div>
             <Header
                 title={requestType.name}
                 subtitle={`Бронирование для ${requestType.carName || 'автомобиля'}`}
@@ -598,19 +595,22 @@ const BookingPage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Submit Button */}
-                        <div className="pt-4 pb-8">
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!validateForm() || _submitting}
-                                className={`w-full py-4 rounded-2xl font-bold text-white transition-all shadow-xl active:scale-95 ${!validateForm() || _submitting
-                                    ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                                    : 'bg-primary-dark hover:shadow-primary-dark/20'
-                                    }`}
-                            >
-                                {_submitting ? 'Создание заявки...' : 'Забронировать'}
-                            </button>
-                        </div>
+                        {/* Inside Telegram the native MainButton submits the form;
+                            this fallback only renders in dev/browser mode. */}
+                        {!telegramService.isInTelegram() && (
+                            <div className="pt-4 pb-8">
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!validateForm() || _submitting}
+                                    className={`w-full py-4 rounded-2xl font-bold text-white transition-all shadow-xl active:scale-95 ${!validateForm() || _submitting
+                                        ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                        : 'bg-primary-dark hover:shadow-primary-dark/20'
+                                        }`}
+                                >
+                                    {_submitting ? 'Создание заявки...' : 'Забронировать'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
             )}

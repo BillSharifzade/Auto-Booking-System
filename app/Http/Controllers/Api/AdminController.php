@@ -260,9 +260,27 @@ class AdminController extends Controller
         if (!$newStatus) {
             return response()->json(['error' => 'Invalid status'], 400);
         }
-        
-        $booking->update(['status' => $newStatus]);
-        
+
+        $reason = trim($validated['reason'] ?? '');
+
+        // Cancellation/decline must always carry a reason for the client
+        if (in_array($newStatus, [BookingStatus::CANCELED, BookingStatus::DECLINED], true) && $reason === '') {
+            return response()->json(['error' => 'Reason is required'], 422);
+        }
+
+        $booking->update(array_merge(
+            ['status' => $newStatus],
+            $reason !== '' ? ['rejection_reason' => $reason] : []
+        ));
+
+        $booking->load(['driver', 'user', 'car']);
+        $notificationService = app(NotificationService::class);
+        if ($newStatus === BookingStatus::CANCELED) {
+            $notificationService->notifyClientBookingCanceled($booking, $reason, $bot);
+        } elseif ($newStatus === BookingStatus::DECLINED) {
+            $notificationService->notifyClientBookingDeclined($booking, $reason, $bot);
+        }
+
         $titles = [
             'APPROVED' => '✅ *Заявка одобрена*',
             'DECLINED' => '🚫 *Заявка отклонена*',
@@ -293,12 +311,12 @@ class AdminController extends Controller
     public function declineBooking(Request $request, $id, \SergiX44\Nutgram\Nutgram $bot)
     {
         $validated = $request->validate([
-            'reason' => 'nullable|string|max:1000',
+            'reason' => 'required|string|max:1000',
         ]);
 
-        $reason = trim($validated['reason'] ?? '');
+        $reason = trim($validated['reason']);
         if ($reason === '') {
-            $reason = 'Без указания причины';
+            return response()->json(['error' => 'Reason is required'], 422);
         }
 
         $booking = Booking::with(['driver', 'user', 'car'])->findOrFail($id);
@@ -320,17 +338,33 @@ class AdminController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function cancelBooking($id, \SergiX44\Nutgram\Nutgram $bot)
+    public function cancelBooking(Request $request, $id, \SergiX44\Nutgram\Nutgram $bot)
     {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $reason = trim($validated['reason']);
+        if ($reason === '') {
+            return response()->json(['error' => 'Reason is required'], 422);
+        }
+
         $booking = Booking::with(['driver', 'user', 'car'])->findOrFail($id);
-        $booking->update(['status' => BookingStatus::CANCELED]);
-        
+        $booking->update([
+            'status' => BookingStatus::CANCELED,
+            'rejection_reason' => $reason,
+        ]);
+
+        $notificationService = app(NotificationService::class);
+
+        // Notify the client (booking owner) with the cancellation reason
+        $notificationService->notifyClientBookingCanceled($booking, $reason, $bot);
+
         // Notify driver
         if ($booking->driver_id) {
-            $notificationService = app(NotificationService::class);
-            $notificationService->notifyDriverBookingCanceled($booking, 'administrator', $bot);
+            $notificationService->notifyDriverBookingCanceled($booking, 'administrator', $bot, $reason);
         }
-        
+
         return response()->json(['success' => true]);
     }
 

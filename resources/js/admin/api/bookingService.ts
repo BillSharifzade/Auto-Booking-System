@@ -89,10 +89,10 @@ export const bookingService = {
   approve: async (id: string) => {
     return httpClient.post<Booking>(`/admin/bookings/${id}/approve`, {});
   },
-  decline: async (id: string, reason?: string) => {
+  decline: async (id: string, reason: string) => {
     return httpClient.post<Booking>(`/admin/bookings/${id}/decline`, { reason });
   },
-  cancel: async (id: string) => {
-    return httpClient.patch<Booking>(`/admin/bookings/${id}/status`, { status: 'CANCELED' as BookingStatus });
+  cancel: async (id: string, reason: string) => {
+    return httpClient.post<{ success: boolean }>(`/admin/bookings/${id}/cancel`, { reason });
   },
 };
