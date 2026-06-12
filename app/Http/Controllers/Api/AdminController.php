@@ -673,6 +673,88 @@ class AdminController extends Controller
         return response()->json($this->formatDriver($driver));
     }
 
+    // =================== ADMIN ACCOUNTS ===================
+
+    public function getAdmins(Request $request)
+    {
+        $admins = User::where('role', 'ADMIN')->orderBy('id')->get()->map(function ($user) {
+            return $this->formatAdmin($user);
+        });
+
+        return response()->json([
+            'data' => $admins,
+            'total' => count($admins),
+            'page' => 1,
+            'limit' => 100,
+            'totalPages' => 1,
+        ]);
+    }
+
+    private function formatAdmin($user)
+    {
+        return [
+            'id' => (string) $user->id,
+            'name' => $user->full_name ?? $user->username,
+            'email' => $user->email,
+            'isActive' => $user->is_active,
+            'createdAt' => $user->created_at?->toISOString(),
+            'updatedAt' => $user->updated_at?->toISOString(),
+        ];
+    }
+
+    public function createAdmin(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $admin = User::create([
+            'full_name' => $validated['name'],
+            'username' => $validated['email'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => 'ADMIN',
+            'is_active' => true,
+        ]);
+
+        return response()->json($this->formatAdmin($admin), 201);
+    }
+
+    public function updateAdmin(Request $request, $id)
+    {
+        $admin = User::where('role', 'ADMIN')->findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'string|max:255',
+            'email' => 'email|max:255|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:8',
+        ]);
+
+        if (isset($validated['name'])) $admin->full_name = $validated['name'];
+        if (isset($validated['email'])) $admin->email = $validated['email'];
+        if (!empty($validated['password'])) $admin->password = $validated['password'];
+
+        $admin->save();
+
+        return response()->json($this->formatAdmin($admin));
+    }
+
+    public function deleteAdmin(Request $request, $id)
+    {
+        $admin = User::where('role', 'ADMIN')->findOrFail($id);
+
+        // Blocking self-deletion also guarantees at least one admin always remains
+        if ($request->user()->id === $admin->id) {
+            return response()->json(['error' => 'Нельзя удалить собственную учётную запись'], 422);
+        }
+
+        $admin->delete();
+
+        return response()->json(['success' => true]);
+    }
+
     // =================== REQUEST TYPES ===================
     
     public function getRequestTypes()

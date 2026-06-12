@@ -1,4 +1,4 @@
-import { LayoutDashboard, Car, Users, FileText, Building2, Briefcase, LogOut } from "lucide-react";
+import { LayoutDashboard, Car, Users, FileText, Building2, Briefcase, Shield, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -21,6 +21,7 @@ const menuItems = [
   { title: "Типы заявок", url: "/types", icon: FileText },
   { title: "Отделы", url: "/departments", icon: Building2 },
   { title: "Должности", url: "/positions", icon: Briefcase },
+  { title: "Администраторы", url: "/admins", icon: Shield },
 ];
 
 export function AppSidebar() {

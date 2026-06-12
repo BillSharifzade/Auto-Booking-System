@@ -13,6 +13,7 @@ import Drivers from "./pages/Drivers";
 import Types from "./pages/Types";
 import Departments from "./pages/Departments";
 import Positions from "./pages/Positions";
+import Admins from "./pages/Admins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
                     <Route path="/types" element={<Types />} />
                     <Route path="/departments" element={<Departments />} />
                     <Route path="/positions" element={<Positions />} />
+                    <Route path="/admins" element={<Admins />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>

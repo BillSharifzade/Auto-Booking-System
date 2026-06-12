@@ -55,6 +55,12 @@ Route::middleware('web')->group(function () {
         Route::post('/admin/bookings/{id}/decline', [AdminController::class, 'declineBooking']);
         Route::post('/admin/bookings/{id}/cancel', [AdminController::class, 'cancelBooking']);
 
+        // Admin accounts
+        Route::get('/admin/admins', [AdminController::class, 'getAdmins']);
+        Route::post('/admin/admins', [AdminController::class, 'createAdmin']);
+        Route::put('/admin/admins/{id}', [AdminController::class, 'updateAdmin']);
+        Route::delete('/admin/admins/{id}', [AdminController::class, 'deleteAdmin']);
+
         // Request Types
         Route::get('/admin/request-types', [AdminController::class, 'getRequestTypes']);
         Route::post('/admin/request-types', [AdminController::class, 'createRequestType']);
