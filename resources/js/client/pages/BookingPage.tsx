@@ -23,6 +23,11 @@ import Header from '../components/Header';
 import Calendar from '../components/Calendar';
 import TimeSlotPicker from '../components/TimeSlotPicker';
 
+// Bookings must be made at least 1 hour before the trip start
+// (positions flagged noTimeLimit, e.g. department heads, are exempt).
+const MIN_LEAD_TIME_MS = 60 * 60 * 1000;
+const LEAD_TIME_MESSAGE = 'Заявку можно оформить не позднее чем за 1 час до начала поездки. Выберите более позднее время.';
+
 const BookingPage: React.FC = () => {
     const { requestTypeId } = useParams<{ requestTypeId: string }>();
     const navigate = useNavigate();
@@ -166,8 +171,7 @@ const BookingPage: React.FC = () => {
         // Parse date as YYYY-MM-DD to avoid timezone shifts
         const [year, month, day] = selectedDate.split('-').map(Number);
         const now = getDushanbeNow();
-        // Bookings must be made at least 3 hours before the trip start.
-        const minBookingTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        const minBookingTime = new Date(now.getTime() + MIN_LEAD_TIME_MS);
 
         // Generate slots from 8:00 to 20:00 with 30-min intervals
         for (let hour = 8; hour < 20; hour++) {
@@ -175,8 +179,8 @@ const BookingPage: React.FC = () => {
                 // Create a date object that specifically represents the time in Dushanbe
                 const slotTime = new Date(year, month - 1, day, hour, minute, 0, 0);
 
-                // Enforce the 3-hour advance booking rule (hides too-soon slots).
-                if (slotTime < minBookingTime) {
+                // Hide slots that have already started.
+                if (slotTime < now) {
                     continue;
                 }
 
@@ -207,6 +211,7 @@ const BookingPage: React.FC = () => {
                     isAvailable: !isBlocked,
                     isBlocked,
                     isSelected: false,
+                    isTooSoon: slotTime < minBookingTime,
                 });
             }
         }
@@ -239,6 +244,19 @@ const BookingPage: React.FC = () => {
         }, 100);
     };
 
+    const hasNoTimeLimit = positions.find((p) => p.id === formData.positionId)?.noTimeLimit ?? false;
+
+    // Whether the given start time (HH:mm) on the selected date falls within the minimum lead time.
+    const isWithinLeadTime = (time?: string): boolean => {
+        if (!time) return false;
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const [hour, minute] = time.split(':').map(Number);
+        const start = new Date(year, month - 1, day, hour, minute, 0, 0);
+        return start.getTime() < getDushanbeNow().getTime() + MIN_LEAD_TIME_MS;
+    };
+
+    const leadTimeViolated = !hasNoTimeLimit && isWithinLeadTime(formData.timeFrom);
+
     const validateForm = (): boolean => {
         if (!selectedSlot) return false;
         if (!formData.timeFrom || !formData.timeTo) return false;
@@ -259,6 +277,11 @@ const BookingPage: React.FC = () => {
 
         if (!validateForm() || !requestType || !requestTypeId) {
             showToast('Заполните все поля корректно', 'error');
+            return;
+        }
+
+        if (!hasNoTimeLimit && isWithinLeadTime(formData.timeFrom)) {
+            showToast(LEAD_TIME_MESSAGE, 'warning', 5000);
             return;
         }
 
@@ -357,6 +380,7 @@ const BookingPage: React.FC = () => {
                         slots={timeSlots}
                         selectedSlot={selectedSlot}
                         onSlotSelect={handleSlotClick}
+                        noTimeLimit={hasNoTimeLimit}
                     />
                 </div>
             )}
@@ -512,6 +536,13 @@ const BookingPage: React.FC = () => {
                                 />
                             </div>
                         </div>
+
+                        {/* Minimum advance-booking notice */}
+                        {leadTimeViolated && (
+                            <div className="p-3 rounded-lg border bg-yellow-500/10 text-yellow-700 border-yellow-500/30 text-sm">
+                                ⏱ {LEAD_TIME_MESSAGE}
+                            </div>
+                        )}
 
                         {/* Has Passengers */}
                         <label className="flex items-center gap-3 cursor-pointer">

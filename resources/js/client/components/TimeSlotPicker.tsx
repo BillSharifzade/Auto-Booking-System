@@ -6,9 +6,10 @@ interface TimeSlotPickerProps {
     slots: TimeSlot[];
     selectedSlot: TimeSlot | null;
     onSlotSelect: (slot: TimeSlot) => void;
+    noTimeLimit?: boolean; // when true, too-soon slots are shown as regular free slots
 }
 
-const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ slots, selectedSlot, onSlotSelect }) => {
+const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ slots, selectedSlot, onSlotSelect, noTimeLimit = false }) => {
     if (slots.length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
@@ -19,31 +20,38 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ slots, selectedSlot, on
 
     return (
         <div className="space-y-2">
-            {slots.map((slot) => (
-                <motion.button
-                    key={slot.time}
-                    onClick={() => onSlotSelect(slot)}
-                    disabled={!slot.isAvailable}
-                    whileTap={slot.isAvailable ? { scale: 0.98 } : {}}
-                    className={`w-full p-4 rounded-lg border-2 transition-all ${selectedSlot?.time === slot.time
-                            ? 'bg-primary-dark text-white border-primary-dark'
-                            : slot.isAvailable
-                                ? 'bg-success-light/20 border-success-light hover:border-success'
-                                : 'bg-accent-red/10 border-accent-red/30 cursor-not-allowed'
-                        }`}
-                >
-                    <div className="flex items-center justify-between">
-                        <span className="font-semibold">{slot.time}</span>
-                        <span className="text-sm">
-                            {selectedSlot?.time === slot.time
-                                ? '✓ Выбрано'
-                                : slot.isAvailable
-                                    ? '✓ Свободно'
-                                    : '✕ Занято'}
-                        </span>
-                    </div>
-                </motion.button>
-            ))}
+            {slots.map((slot) => {
+                const tooSoon = slot.isAvailable && slot.isTooSoon && !noTimeLimit;
+                return (
+                    <motion.button
+                        key={slot.time}
+                        onClick={() => onSlotSelect(slot)}
+                        disabled={!slot.isAvailable}
+                        whileTap={slot.isAvailable ? { scale: 0.98 } : {}}
+                        className={`w-full p-4 rounded-lg border-2 transition-all ${selectedSlot?.time === slot.time
+                                ? 'bg-primary-dark text-white border-primary-dark'
+                                : tooSoon
+                                    ? 'bg-yellow-500/10 border-yellow-500/30'
+                                    : slot.isAvailable
+                                        ? 'bg-success-light/20 border-success-light hover:border-success'
+                                        : 'bg-accent-red/10 border-accent-red/30 cursor-not-allowed'
+                            }`}
+                    >
+                        <div className="flex items-center justify-between">
+                            <span className="font-semibold">{slot.time}</span>
+                            <span className="text-sm">
+                                {selectedSlot?.time === slot.time
+                                    ? '✓ Выбрано'
+                                    : tooSoon
+                                        ? '⏱ Менее чем за 1 час'
+                                        : slot.isAvailable
+                                            ? '✓ Свободно'
+                                            : '✕ Занято'}
+                            </span>
+                        </div>
+                    </motion.button>
+                );
+            })}
         </div>
     );
 };

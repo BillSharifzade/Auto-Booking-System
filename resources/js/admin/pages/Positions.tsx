@@ -70,6 +70,9 @@ export default function Positions() {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold">{position.title}</h3>
+                                        {position.noTimeLimit && (
+                                            <p className="text-xs text-muted-foreground">Без ограничения по времени</p>
+                                        )}
                                     </div>
                                 </div>
                                 <Badge variant={position.isActive ? 'default' : 'secondary'}>

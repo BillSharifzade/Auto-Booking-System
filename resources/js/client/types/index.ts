@@ -54,6 +54,7 @@ export interface Position {
     id: string;
     title: string;
     isActive: boolean;
+    noTimeLimit?: boolean; // exempt from the minimum advance-booking time
 }
 
 export interface RequestType {
@@ -119,6 +120,7 @@ export interface TimeSlot {
     isAvailable: boolean;
     isBlocked: boolean;
     isSelected: boolean;
+    isTooSoon?: boolean; // starts within the minimum advance-booking time
     bookingId?: string;
     blockId?: string;
 }

@@ -1,6 +1,8 @@
 /// <reference path="../types/telegram.d.ts" />
 
 class TelegramService {
+    private mainButtonHandler: (() => void) | null = null;
+
     get webApp() {
         return (typeof window !== 'undefined' && window.Telegram?.WebApp)
             ? window.Telegram.WebApp
@@ -102,6 +104,11 @@ class TelegramService {
         if (!this.webApp) return;
 
         this.webApp.MainButton.setText(text);
+        // Replace the previous handler so only the latest one fires on click.
+        if (this.mainButtonHandler) {
+            this.webApp.MainButton.offClick(this.mainButtonHandler);
+        }
+        this.mainButtonHandler = onClick;
         this.webApp.MainButton.onClick(onClick);
         this.webApp.MainButton.show();
         this.webApp.MainButton.enable();

@@ -974,6 +974,7 @@ class AdminController extends Controller
             'id' => (string) $pos->id,
             'title' => $pos->title,
             'isActive' => $pos->is_active,
+            'noTimeLimit' => $pos->no_time_limit,
             'createdAt' => $pos->created_at?->toISOString(),
             'updatedAt' => $pos->updated_at?->toISOString(),
         ];
@@ -984,11 +985,13 @@ class AdminController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'isActive' => 'boolean',
+            'noTimeLimit' => 'boolean',
         ]);
 
         $position = Position::create([
             'title' => $validated['title'],
             'is_active' => $validated['isActive'] ?? true,
+            'no_time_limit' => $validated['noTimeLimit'] ?? false,
         ]);
 
         return response()->json($this->formatPosition($position), 201);
@@ -1001,10 +1004,12 @@ class AdminController extends Controller
         $validated = $request->validate([
             'title' => 'string|max:255',
             'isActive' => 'boolean',
+            'noTimeLimit' => 'boolean',
         ]);
 
         if (isset($validated['title'])) $position->title = $validated['title'];
         if (isset($validated['isActive'])) $position->is_active = $validated['isActive'];
+        if (isset($validated['noTimeLimit'])) $position->no_time_limit = $validated['noTimeLimit'];
         
         $position->save();
 

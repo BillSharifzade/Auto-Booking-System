@@ -7,6 +7,7 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\RequestTypeResource;
 use App\Models\Booking;
 use App\Models\Car;
+use App\Models\Position;
 use App\Models\RequestType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -135,12 +136,14 @@ class ClientController extends Controller
             $dateTimeFrom = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['timeFrom'], 'Asia/Dushanbe');
             $dateTimeTo = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['timeTo'], 'Asia/Dushanbe');
 
-            // Enforce minimum 3-hour advance booking for regular employees.
-            // Admins may bypass this limit.
-            if (!$user->isAdmin() && $dateTimeFrom->lt(now()->addHours(3))) {
+            // Enforce minimum 1-hour advance booking for regular employees.
+            // Admins and positions flagged no_time_limit (department heads) may bypass this limit.
+            $position = Position::find($validated['positionId']);
+            $noTimeLimit = $user->isAdmin() || $position?->no_time_limit;
+            if (!$noTimeLimit && $dateTimeFrom->lt(now()->addHour())) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Бронирование возможно не позднее чем за 3 часа до начала поездки',
+                    'error' => 'Заявку можно оформить не позднее чем за 1 час до начала поездки. Выберите более позднее время.',
                 ], 422);
             }
 

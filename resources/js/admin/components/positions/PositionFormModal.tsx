@@ -27,6 +27,7 @@ export function PositionFormModal({ open, onOpenChange, position, onSuccess }: P
     const [formData, setFormData] = useState({
         title: "",
         isActive: true,
+        noTimeLimit: false,
     });
 
     useEffect(() => {
@@ -34,6 +35,7 @@ export function PositionFormModal({ open, onOpenChange, position, onSuccess }: P
             setFormData({
                 title: position?.title || "",
                 isActive: position?.isActive ?? true,
+                noTimeLimit: position?.noTimeLimit ?? false,
             });
         }
     }, [open, position]);
@@ -53,7 +55,7 @@ export function PositionFormModal({ open, onOpenChange, position, onSuccess }: P
 
             onOpenChange(false);
             onSuccess?.();
-            setFormData({ title: "", isActive: true });
+            setFormData({ title: "", isActive: true, noTimeLimit: false });
         } catch (error: any) {
             toast.error(error?.message || "Ошибка при сохранении");
         }
@@ -85,6 +87,20 @@ export function PositionFormModal({ open, onOpenChange, position, onSuccess }: P
                                 id="isActive"
                                 checked={formData.isActive}
                                 onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <Label htmlFor="noTimeLimit">Без ограничения по времени</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Заявки можно оформлять менее чем за 1 час до поездки
+                                </p>
+                            </div>
+                            <Switch
+                                id="noTimeLimit"
+                                checked={formData.noTimeLimit}
+                                onCheckedChange={(checked) => setFormData({ ...formData, noTimeLimit: checked })}
                             />
                         </div>
                     </div>

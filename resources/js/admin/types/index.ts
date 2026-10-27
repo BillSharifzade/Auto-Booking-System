@@ -125,6 +125,7 @@ export interface Position {
   id: string;
   title: string;
   isActive: boolean;
+  noTimeLimit: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
